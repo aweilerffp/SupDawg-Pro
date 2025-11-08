@@ -1,0 +1,36 @@
+{
+  "name": "supdawg-backend",
+  "version": "1.0.0",
+  "description": "SupDawg Slack Team Pulse Check-in Bot - Backend",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "migrate": "node src/config/migrate.js",
+    "test": "jest"
+  },
+  "keywords": ["slack", "bot", "pulse-check", "team-management"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@slack/bolt": "^3.17.1",
+    "@slack/web-api": "^6.12.0",
+    "express": "^4.18.2",
+    "pg": "^8.11.3",
+    "dotenv": "^16.4.5",
+    "node-cron": "^3.0.3",
+    "express-session": "^1.18.0",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
+    "passport-slack-oauth2": "^1.1.0",
+    "bcrypt": "^5.1.1",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "express-rate-limit": "^7.1.5",
+    "moment-timezone": "^0.5.45"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.3",
+    "jest": "^29.7.0"
+  }
+}
