@@ -2,7 +2,8 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const CheckIn = require('../models/CheckIn');
-const { requireAuth, canViewUser, filterAccessibleUsers } = require('../middleware/permissions');
+const { requireAuth, requireAdmin, canViewUser, filterAccessibleUsers } = require('../middleware/permissions');
+const { app: slackApp } = require('../services/slackBot');
 
 // Middleware to check authentication (legacy - keeping for backwards compatibility)
 const isAuthenticated = (req, res, next) => {
@@ -45,6 +46,59 @@ router.post('/', isAuthenticated, async (req, res) => {
   } catch (error) {
     console.error('Error creating user:', error);
     res.status(500).json({ error: 'Failed to create user' });
+  }
+});
+
+// Add user from Slack workspace
+router.post('/add-from-slack', requireAdmin, async (req, res) => {
+  try {
+    const { slack_user_id } = req.body;
+
+    if (!slack_user_id) {
+      return res.status(400).json({ error: 'slack_user_id is required' });
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findBySlackUserId(slack_user_id);
+    if (existingUser) {
+      return res.status(400).json({
+        error: 'User already exists',
+        user: existingUser
+      });
+    }
+
+    // Fetch user info from Slack
+    console.log(`Fetching user info from Slack for: ${slack_user_id}`);
+    const userInfo = await slackApp.client.users.info({ user: slack_user_id });
+
+    if (!userInfo.ok || !userInfo.user) {
+      return res.status(400).json({ error: 'Failed to fetch user from Slack' });
+    }
+
+    const slackUser = userInfo.user;
+
+    // Create user in database
+    const newUser = await User.create({
+      slack_user_id: slackUser.id,
+      slack_username: slackUser.name,
+      email: slackUser.profile?.email || null,
+      timezone: slackUser.tz || 'America/New_York',
+      is_admin: false,
+      manager_id: null
+    });
+
+    console.log(`✓ User added from Slack: ${newUser.slack_username} (${newUser.id})`);
+
+    res.status(201).json({
+      message: 'User added successfully',
+      user: newUser
+    });
+  } catch (error) {
+    console.error('Error adding user from Slack:', error);
+    res.status(500).json({
+      error: 'Failed to add user from Slack',
+      details: error.message
+    });
   }
 });
 

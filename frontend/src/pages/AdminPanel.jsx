@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { PencilIcon, UserPlusIcon, TagIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import UserBrowserModal from '../components/UserBrowserModal';
 
 export default function AdminPanel() {
   const navigate = useNavigate();
@@ -388,24 +389,12 @@ export default function AdminPanel() {
         </table>
       </div>
 
-      {/* Add User Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 max-w-md w-full">
-            <h3 className="text-lg font-semibold mb-4">Add New User</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Users will be automatically added when they're detected in your Slack workspace.
-              To manually add a user, you'll need their Slack User ID.
-            </p>
-            <button
-              onClick={() => setShowAddModal(false)}
-              className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Add User Modal - Slack Workspace Browser */}
+      <UserBrowserModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onUserAdded={fetchData}
+      />
 
       {/* Tag Management Modal */}
       {showTagModal && selectedUserForTags && (

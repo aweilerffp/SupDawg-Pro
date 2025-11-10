@@ -48,6 +48,7 @@ const dashboardRoutes = require('./routes/dashboard');
 const adminRoutes = require('./routes/admin');
 const orgRoutes = require('./routes/org');
 const tagRoutes = require('./routes/tags');
+const slackRoutes = require('./routes/slack');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
@@ -57,6 +58,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/org', orgRoutes);
 app.use('/api/tags', tagRoutes);
+app.use('/api/slack', slackRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

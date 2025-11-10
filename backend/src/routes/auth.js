@@ -12,7 +12,7 @@ const isAuthenticated = (req, res, next) => {
 
 // Slack OAuth routes
 router.get('/slack', (req, res) => {
-  const slackAuthUrl = `https://slack.com/oauth/v2/authorize?client_id=${process.env.SLACK_CLIENT_ID}&scope=chat:write,users:read,im:write,im:history&redirect_uri=${process.env.BASE_URL}/api/auth/slack/callback`;
+  const slackAuthUrl = `https://slack.com/oauth/v2/authorize?client_id=${process.env.SLACK_CLIENT_ID}&scope=chat:write,users:read,users:read.email,im:write,im:history&redirect_uri=${process.env.BASE_URL}/api/auth/slack/callback`;
   res.redirect(slackAuthUrl);
 });
 
