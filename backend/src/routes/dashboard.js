@@ -3,6 +3,7 @@ const router = express.Router();
 const CheckIn = require('../models/CheckIn');
 const User = require('../models/User');
 const db = require('../config/database');
+const { requireAuth, filterAccessibleUsers } = require('../middleware/permissions');
 
 const isAuthenticated = (req, res, next) => {
   if (req.session && req.session.userId) {
@@ -11,22 +12,62 @@ const isAuthenticated = (req, res, next) => {
   res.status(401).json({ error: 'Not authenticated' });
 };
 
-// Get current week overview
-router.get('/overview', isAuthenticated, async (req, res) => {
+// Get current week overview with permission filtering
+router.get('/overview', requireAuth, filterAccessibleUsers, async (req, res) => {
   try {
-    const { weekStartDate } = req.query;
+    const { weekStartDate, managerId, department, tagIds } = req.query;
     if (!weekStartDate) {
       return res.status(400).json({ error: 'weekStartDate is required' });
     }
 
-    const stats = await CheckIn.getCompletionStatsForWeek(weekStartDate);
-    const incomplete = await CheckIn.getIncompleteForWeek(weekStartDate);
+    // Start with accessible user IDs
+    let targetUserIds = req.accessibleUserIds;
+
+    // Apply manager filter if specified
+    if (managerId) {
+      const teamMembers = await User.getAllTeamMembers(parseInt(managerId));
+      const teamMemberIds = teamMembers.map(m => m.id);
+      // Intersect with accessible users
+      targetUserIds = targetUserIds.filter(id => teamMemberIds.includes(id));
+    }
+
+    // Apply department filter if specified
+    if (department) {
+      const deptQuery = 'SELECT id FROM users WHERE department = $1 AND is_active = true';
+      const deptResult = await db.query(deptQuery, [department]);
+      const deptUserIds = deptResult.rows.map(r => r.id);
+      // Intersect with current target users
+      targetUserIds = targetUserIds.filter(id => deptUserIds.includes(id));
+    }
+
+    // Apply tag filter if specified
+    if (tagIds) {
+      const tagIdArray = Array.isArray(tagIds) ? tagIds : [tagIds];
+      const tagQuery = `
+        SELECT DISTINCT user_id FROM user_tags
+        WHERE tag_id = ANY($1::int[])
+      `;
+      const tagResult = await db.query(tagQuery, [tagIdArray]);
+      const tagUserIds = tagResult.rows.map(r => r.user_id);
+      // Intersect with current target users
+      targetUserIds = targetUserIds.filter(id => tagUserIds.includes(id));
+    }
+
+    // Get stats for filtered users
+    const stats = targetUserIds.length > 0
+      ? await CheckIn.getCompletionStatsForUsers(targetUserIds, weekStartDate)
+      : { completed_count: 0, total_count: 0, avg_rating: null };
+
+    const incomplete = targetUserIds.length > 0
+      ? await CheckIn.getIncompleteForUsers(targetUserIds, weekStartDate)
+      : [];
 
     res.json({
       completedCount: parseInt(stats.completed_count) || 0,
       totalCount: parseInt(stats.total_count) || 0,
       averageRating: parseFloat(stats.avg_rating) || null,
-      incompleteUsers: incomplete
+      incompleteUsers: incomplete,
+      filteredUserCount: targetUserIds.length
     });
   } catch (error) {
     console.error('Error fetching overview:', error);
@@ -34,34 +75,64 @@ router.get('/overview', isAuthenticated, async (req, res) => {
   }
 });
 
-// Get responses with optional anonymization
-router.get('/responses', isAuthenticated, async (req, res) => {
+// Get responses with optional anonymization and permission filtering
+router.get('/responses', requireAuth, filterAccessibleUsers, async (req, res) => {
   try {
-    const { weekStartDate, anonymous, managerId } = req.query;
+    const { weekStartDate, anonymous, managerId, department, tagIds } = req.query;
 
+    // Start with accessible user IDs
+    let targetUserIds = req.accessibleUserIds;
+
+    // Apply manager filter if specified
+    if (managerId) {
+      const teamMembers = await User.getAllTeamMembers(parseInt(managerId));
+      const teamMemberIds = teamMembers.map(m => m.id);
+      targetUserIds = targetUserIds.filter(id => teamMemberIds.includes(id));
+    }
+
+    // Apply department filter if specified
+    if (department) {
+      const deptQuery = 'SELECT id FROM users WHERE department = $1 AND is_active = true';
+      const deptResult = await db.query(deptQuery, [department]);
+      const deptUserIds = deptResult.rows.map(r => r.id);
+      targetUserIds = targetUserIds.filter(id => deptUserIds.includes(id));
+    }
+
+    // Apply tag filter if specified
+    if (tagIds) {
+      const tagIdArray = Array.isArray(tagIds) ? tagIds : [tagIds];
+      const tagQuery = `
+        SELECT DISTINCT user_id FROM user_tags
+        WHERE tag_id = ANY($1::int[])
+      `;
+      const tagResult = await db.query(tagQuery, [tagIdArray]);
+      const tagUserIds = tagResult.rows.map(r => r.user_id);
+      targetUserIds = targetUserIds.filter(id => tagUserIds.includes(id));
+    }
+
+    if (targetUserIds.length === 0) {
+      return res.json([]);
+    }
+
+    // Build query with user ID filtering
     let query = `
       SELECT
         c.id, c.week_start_date, c.rating, c.what_went_well, c.what_didnt_go_well, c.completed_at,
-        u.id as user_id, u.slack_username, u.email, u.manager_id,
+        u.id as user_id, u.slack_username, u.email, u.manager_id, u.department,
         r.question_id, r.response_text, q.question_text
       FROM check_ins c
       JOIN users u ON c.user_id = u.id
       LEFT JOIN responses r ON c.id = r.check_in_id
       LEFT JOIN questions q ON r.question_id = q.id
       WHERE c.completed_at IS NOT NULL AND u.is_active = true
+        AND u.id = ANY($1::int[])
     `;
-    const params = [];
-    let paramCount = 1;
+    const params = [targetUserIds];
+    let paramCount = 2;
 
     if (weekStartDate) {
       query += ` AND c.week_start_date = $${paramCount}`;
       params.push(weekStartDate);
-      paramCount++;
-    }
-
-    if (managerId) {
-      query += ` AND u.manager_id = $${paramCount}`;
-      params.push(managerId);
       paramCount++;
     }
 
@@ -83,7 +154,8 @@ router.get('/responses', isAuthenticated, async (req, res) => {
           user: anonymous === 'true' ? null : {
             id: row.user_id,
             username: row.slack_username,
-            email: row.email
+            email: row.email,
+            department: row.department
           },
           responses: []
         };
@@ -115,10 +187,44 @@ router.get('/responses', isAuthenticated, async (req, res) => {
   }
 });
 
-// Get trends over time
-router.get('/trends', isAuthenticated, async (req, res) => {
+// Get trends over time with permission filtering
+router.get('/trends', requireAuth, filterAccessibleUsers, async (req, res) => {
   try {
-    const { startDate, endDate } = req.query;
+    const { startDate, endDate, managerId, department, tagIds } = req.query;
+
+    // Start with accessible user IDs
+    let targetUserIds = req.accessibleUserIds;
+
+    // Apply manager filter if specified
+    if (managerId) {
+      const teamMembers = await User.getAllTeamMembers(parseInt(managerId));
+      const teamMemberIds = teamMembers.map(m => m.id);
+      targetUserIds = targetUserIds.filter(id => teamMemberIds.includes(id));
+    }
+
+    // Apply department filter if specified
+    if (department) {
+      const deptQuery = 'SELECT id FROM users WHERE department = $1 AND is_active = true';
+      const deptResult = await db.query(deptQuery, [department]);
+      const deptUserIds = deptResult.rows.map(r => r.id);
+      targetUserIds = targetUserIds.filter(id => deptUserIds.includes(id));
+    }
+
+    // Apply tag filter if specified
+    if (tagIds) {
+      const tagIdArray = Array.isArray(tagIds) ? tagIds : [tagIds];
+      const tagQuery = `
+        SELECT DISTINCT user_id FROM user_tags
+        WHERE tag_id = ANY($1::int[])
+      `;
+      const tagResult = await db.query(tagQuery, [tagIdArray]);
+      const tagUserIds = tagResult.rows.map(r => r.user_id);
+      targetUserIds = targetUserIds.filter(id => tagUserIds.includes(id));
+    }
+
+    if (targetUserIds.length === 0) {
+      return res.json([]);
+    }
 
     let query = `
       SELECT
@@ -128,13 +234,15 @@ router.get('/trends', isAuthenticated, async (req, res) => {
         AVG(c.rating) FILTER (WHERE c.completed_at IS NOT NULL) as avg_rating
       FROM check_ins c
       JOIN users u ON c.user_id = u.id
-      WHERE u.is_active = true
+      WHERE u.is_active = true AND c.user_id = ANY($1::int[])
     `;
-    const params = [];
+    const params = [targetUserIds];
+    let paramCount = 2;
 
     if (startDate && endDate) {
-      query += ` AND c.week_start_date BETWEEN $1 AND $2`;
+      query += ` AND c.week_start_date BETWEEN $${paramCount} AND $${paramCount + 1}`;
       params.push(startDate, endDate);
+      paramCount += 2;
     }
 
     query += ` GROUP BY c.week_start_date ORDER BY c.week_start_date DESC`;

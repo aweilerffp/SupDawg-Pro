@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const User = require('../models/User');
 
 // Authentication middleware
 const isAuthenticated = (req, res, next) => {
@@ -57,13 +58,48 @@ router.get('/google', (req, res) => {
 });
 
 // Check authentication status
-router.get('/status', (req, res) => {
+router.get('/status', async (req, res) => {
   if (req.session && req.session.userId) {
-    res.json({
-      authenticated: true,
-      userId: req.session.userId,
-      workspaceId: req.session.workspaceId
-    });
+    try {
+      // Find user by Slack user ID
+      const user = await User.findBySlackUserId(req.session.userId);
+
+      if (user) {
+        // Store database user ID in session for easier lookups
+        req.session.user = {
+          id: user.id,
+          slack_user_id: user.slack_user_id
+        };
+
+        res.json({
+          authenticated: true,
+          userId: req.session.userId,
+          workspaceId: req.session.workspaceId,
+          user: {
+            id: user.id,
+            slack_user_id: user.slack_user_id,
+            slack_username: user.slack_username,
+            email: user.email,
+            department: user.department,
+            is_admin: user.is_admin,
+            is_manager: user.is_manager,
+            is_active: user.is_active,
+            timezone: user.timezone
+          }
+        });
+      } else {
+        // User exists in session but not in database (shouldn't happen)
+        res.json({ authenticated: false });
+      }
+    } catch (error) {
+      console.error('Error fetching user details:', error);
+      res.json({
+        authenticated: true,
+        userId: req.session.userId,
+        workspaceId: req.session.workspaceId,
+        error: 'Could not fetch user details'
+      });
+    }
   } else {
     res.json({ authenticated: false });
   }

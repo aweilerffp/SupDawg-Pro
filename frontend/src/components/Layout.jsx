@@ -5,7 +5,8 @@ import {
   UsersIcon,
   QuestionMarkCircleIcon,
   DocumentTextIcon,
-  ArrowRightOnRectangleIcon
+  ArrowRightOnRectangleIcon,
+  BuildingOfficeIcon
 } from '@heroicons/react/24/outline';
 
 export default function Layout({ children }) {
@@ -14,9 +15,10 @@ export default function Layout({ children }) {
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
+    { name: 'Org Chart', href: '/org-chart', icon: BuildingOfficeIcon },
+    { name: 'Responses', href: '/responses', icon: DocumentTextIcon },
     { name: 'Admin Panel', href: '/admin', icon: UsersIcon },
     { name: 'Questions', href: '/questions', icon: QuestionMarkCircleIcon },
-    { name: 'Responses', href: '/responses', icon: DocumentTextIcon },
   ];
 
   return (

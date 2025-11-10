@@ -15,13 +15,17 @@ export function AuthProvider({ children }) {
   const checkAuthStatus = async () => {
     try {
       const response = await api.get('/auth/status');
-      if (response.data.authenticated) {
+      if (response.data.authenticated && response.data.user) {
         setIsAuthenticated(true);
-        setUser(response.data);
+        setUser(response.data.user);
+      } else {
+        setIsAuthenticated(false);
+        setUser(null);
       }
     } catch (error) {
       console.error('Auth check failed:', error);
       setIsAuthenticated(false);
+      setUser(null);
     } finally {
       setLoading(false);
     }
@@ -41,8 +45,35 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // Helper functions to check permissions
+  const isAdmin = () => user?.is_admin === true;
+  const isManager = () => user?.is_manager === true || user?.is_admin === true;
+  const canManageUsers = () => user?.is_admin === true;
+
+  // Can view a specific user's data (would need to verify on backend too)
+  const canViewUser = (targetUserId) => {
+    if (!user) return false;
+    // Admins can see everyone
+    if (user.is_admin) return true;
+    // Users can see themselves
+    if (user.id === targetUserId) return true;
+    // Managers can see their team (but we'd need team info to verify here)
+    // This should always be verified on the backend
+    return user.is_manager;
+  };
+
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, loading, login, logout }}>
+    <AuthContext.Provider value={{
+      isAuthenticated,
+      user,
+      loading,
+      login,
+      logout,
+      isAdmin,
+      isManager,
+      canManageUsers,
+      canViewUser
+    }}>
       {children}
     </AuthContext.Provider>
   );

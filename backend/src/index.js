@@ -46,6 +46,8 @@ const checkInRoutes = require('./routes/checkIns');
 const questionRoutes = require('./routes/questions');
 const dashboardRoutes = require('./routes/dashboard');
 const adminRoutes = require('./routes/admin');
+const orgRoutes = require('./routes/org');
+const tagRoutes = require('./routes/tags');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
@@ -53,6 +55,8 @@ app.use('/api/check-ins', checkInRoutes);
 app.use('/api/questions', questionRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/org', orgRoutes);
+app.use('/api/tags', tagRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

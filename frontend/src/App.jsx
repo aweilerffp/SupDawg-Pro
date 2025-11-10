@@ -5,6 +5,8 @@ import Dashboard from './pages/Dashboard';
 import AdminPanel from './pages/AdminPanel';
 import Questions from './pages/Questions';
 import Responses from './pages/Responses';
+import OrgChart from './pages/OrgChart';
+import EmployeeDetail from './pages/EmployeeDetail';
 import Layout from './components/Layout';
 
 function PrivateRoute({ children }) {
@@ -38,6 +40,8 @@ function App() {
                     <Route path="/admin" element={<AdminPanel />} />
                     <Route path="/questions" element={<Questions />} />
                     <Route path="/responses" element={<Responses />} />
+                    <Route path="/org-chart" element={<OrgChart />} />
+                    <Route path="/employee/:id" element={<EmployeeDetail />} />
                   </Routes>
                 </Layout>
               </PrivateRoute>
