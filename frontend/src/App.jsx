@@ -7,6 +7,7 @@ import Questions from './pages/Questions';
 import Responses from './pages/Responses';
 import OrgChart from './pages/OrgChart';
 import EmployeeDetail from './pages/EmployeeDetail';
+import Settings from './pages/Settings';
 import Layout from './components/Layout';
 
 function PrivateRoute({ children }) {
@@ -41,6 +42,7 @@ function App() {
                     <Route path="/questions" element={<Questions />} />
                     <Route path="/responses" element={<Responses />} />
                     <Route path="/org-chart" element={<OrgChart />} />
+                    <Route path="/settings" element={<Settings />} />
                     <Route path="/employee/:id" element={<EmployeeDetail />} />
                   </Routes>
                 </Layout>

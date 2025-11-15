@@ -6,7 +6,8 @@ import {
   QuestionMarkCircleIcon,
   DocumentTextIcon,
   ArrowRightOnRectangleIcon,
-  BuildingOfficeIcon
+  BuildingOfficeIcon,
+  Cog6ToothIcon
 } from '@heroicons/react/24/outline';
 
 export default function Layout({ children }) {
@@ -19,6 +20,7 @@ export default function Layout({ children }) {
     { name: 'Responses', href: '/responses', icon: DocumentTextIcon },
     { name: 'Admin Panel', href: '/admin', icon: UsersIcon },
     { name: 'Questions', href: '/questions', icon: QuestionMarkCircleIcon },
+    { name: 'Settings', href: '/settings', icon: Cog6ToothIcon },
   ];
 
   return (
