@@ -1,4 +1,4 @@
-const { App } = require('@slack/bolt');
+const { App, ExpressReceiver } = require('@slack/bolt');
 const User = require('../models/User');
 const CheckIn = require('../models/CheckIn');
 const Question = require('../models/Question');
@@ -6,11 +6,16 @@ const Response = require('../models/Response');
 const WorkspaceConfig = require('../models/WorkspaceConfig');
 const { getMonday } = require('../utils/dateHelpers');
 
+// Create a custom ExpressReceiver
+const receiver = new ExpressReceiver({
+  signingSecret: process.env.SLACK_SIGNING_SECRET,
+  processBeforeResponse: true
+});
+
+// Create the Bolt app with the custom receiver
 const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
-  signingSecret: process.env.SLACK_SIGNING_SECRET,
-  socketMode: true,
-  appToken: process.env.SLACK_APP_TOKEN,
+  receiver
 });
 
 // Store active check-in sessions (user_id -> check-in data)
@@ -376,19 +381,17 @@ async function sendReminder(slackUserId, reminderType = 'first') {
 }
 
 /**
- * Start the bot
+ * Initialize the bot (no longer needs to start a separate server)
  */
-async function start() {
-  try {
-    await app.start();
-    console.log('⚡ SupDawg Slack bot is running!');
-  } catch (error) {
-    console.error('Failed to start Slack bot:', error);
-  }
+function start() {
+  console.log('⚡ SupDawg Pro Slack bot initialized (HTTP Request URLs mode)');
+  console.log('📡 Event endpoint: POST /slack/events');
+  console.log('🔘 Interactions endpoint: POST /slack/interactions');
 }
 
 module.exports = {
   app,
+  receiver,
   start,
   sendCheckIn,
   sendReminder

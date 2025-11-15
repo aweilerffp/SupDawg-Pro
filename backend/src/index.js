@@ -11,7 +11,14 @@ const PORT = process.env.PORT || 3000;
 // Trust proxy (we're behind nginx)
 app.set('trust proxy', true);
 
-// Middleware
+// Initialize Slack bot receiver BEFORE other middleware
+// The receiver needs access to raw body for signature verification
+const slackBot = require('./services/slackBot');
+
+// Mount Slack endpoints (uses raw body parser internally)
+app.use('/slack/events', slackBot.receiver.router);
+
+// Middleware (applied after Slack routes to avoid interfering with signature verification)
 app.use(helmet());
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:5173',
@@ -78,14 +85,13 @@ app.use((err, req, res, next) => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`🐕 SupDawg server running on port ${PORT}`);
+  console.log(`🐕 SupDawg Pro server running on port ${PORT}`);
   console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`   Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
-});
 
-// Initialize Slack bot
-const slackBot = require('./services/slackBot');
-slackBot.start();
+  // Log Slack bot status
+  slackBot.start();
+});
 
 // Start scheduled jobs
 const scheduler = require('./jobs/scheduler');
