@@ -50,11 +50,20 @@ async function sendCheckIn(slackUserId, workspaceId) {
       checkIn = await CheckIn.create(user.id, weekStartDate);
     }
 
-    // Get questions
-    const coreQuestions = await Question.getCoreQuestions();
+    // Get questions using type-based lookups
+    const ratingQuestion = await Question.getQuestionByType('rating');
+    const wentWellQuestion = await Question.getQuestionByType('what_went_well');
+    const didntGoWellQuestion = await Question.getQuestionByType('what_didnt_go_well');
+
     const config = await WorkspaceConfig.findByWorkspaceId(workspaceId);
     const currentQuestionIndex = config ? config.current_question_index : 0;
     const rotatingQuestion = await Question.getCurrentRotatingQuestion(currentQuestionIndex);
+
+    // Validate that all core questions are present
+    if (!ratingQuestion || !wentWellQuestion || !didntGoWellQuestion) {
+      console.error('Missing core questions! Cannot send check-in.');
+      throw new Error('System is missing required core questions. Please contact administrator.');
+    }
 
     // Store check-in session
     activeCheckIns.set(slackUserId, {
@@ -62,9 +71,9 @@ async function sendCheckIn(slackUserId, workspaceId) {
       userId: user.id,
       step: 'rating',
       questions: {
-        rating: coreQuestions.find(q => q.question_text.includes('scale of 1 to 5')),
-        wentWell: coreQuestions.find(q => q.question_text.includes('went well')),
-        didntGoWell: coreQuestions.find(q => q.question_text.includes('didn\'t go well')),
+        rating: ratingQuestion,
+        wentWell: wentWellQuestion,
+        didntGoWell: didntGoWellQuestion,
         rotating: rotatingQuestion
       },
       responses: {}
@@ -97,7 +106,7 @@ async function sendCheckIn(slackUserId, workspaceId) {
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `*Question 1:* How was your week on a scale of 1 to 5?\n\n_(1 = Terrible, 5 = Excellent)_`
+            text: `*Question 1:* ${ratingQuestion.question_text}\n\n_(1 = Terrible, 5 = Excellent)_`
           }
         },
         {
@@ -183,7 +192,7 @@ app.action(/rating_\d/, async ({ action, ack, say, body }) => {
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: '*Question 2:* What went well this week?'
+          text: `*Question 2:* ${session.questions.wentWell.question_text}`
         }
       },
       {
@@ -230,7 +239,7 @@ app.message(async ({ message, say }) => {
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: '*Question 3:* What didn\'t go well this week?'
+            text: `*Question 3:* ${session.questions.didntGoWell.question_text}`
           }
         }
       ]

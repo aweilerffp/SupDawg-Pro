@@ -12,7 +12,8 @@ const isAuthenticated = (req, res, next) => {
 // Get all questions
 router.get('/', isAuthenticated, async (req, res) => {
   try {
-    const questions = await Question.findAll();
+    const activeOnly = req.query.activeOnly === 'false' ? false : true;
+    const questions = await Question.findAll(activeOnly);
     res.json(questions);
   } catch (error) {
     console.error('Error fetching questions:', error);
@@ -56,6 +57,18 @@ router.post('/', isAuthenticated, async (req, res) => {
 // Update question
 router.put('/:id', isAuthenticated, async (req, res) => {
   try {
+    // If trying to change question_type, validate it first
+    if (req.body.question_type) {
+      const validation = await Question.validateTypeChange(req.params.id, req.body.question_type);
+      if (!validation.valid) {
+        return res.status(400).json({ error: validation.message });
+      }
+
+      // Automatically update is_core flag when question_type changes
+      const coreTypes = ['rating', 'what_went_well', 'what_didnt_go_well'];
+      req.body.is_core = coreTypes.includes(req.body.question_type);
+    }
+
     const question = await Question.update(req.params.id, req.body);
     if (!question) {
       return res.status(404).json({ error: 'Question not found' });
@@ -79,6 +92,47 @@ router.post('/reorder', isAuthenticated, async (req, res) => {
   } catch (error) {
     console.error('Error reordering questions:', error);
     res.status(500).json({ error: 'Failed to reorder questions' });
+  }
+});
+
+// Change question type (convert between core and rotating)
+router.patch('/:id/type', isAuthenticated, async (req, res) => {
+  try {
+    const { question_type } = req.body;
+    const validTypes = ['rating', 'what_went_well', 'what_didnt_go_well', 'rotating'];
+
+    if (!question_type || !validTypes.includes(question_type)) {
+      return res.status(400).json({
+        error: 'Invalid question_type. Must be one of: rating, what_went_well, what_didnt_go_well, rotating'
+      });
+    }
+
+    // Validate the type change
+    const validation = await Question.validateTypeChange(req.params.id, question_type);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.message });
+    }
+
+    // Update question type and is_core flag
+    const coreTypes = ['rating', 'what_went_well', 'what_didnt_go_well'];
+    const updates = {
+      question_type,
+      is_core: coreTypes.includes(question_type),
+      queue_position: question_type === 'rotating' ? null : null // Will be set by reorder if needed
+    };
+
+    const question = await Question.update(req.params.id, updates);
+    if (!question) {
+      return res.status(404).json({ error: 'Question not found' });
+    }
+
+    res.json({
+      message: 'Question type changed successfully',
+      question
+    });
+  } catch (error) {
+    console.error('Error changing question type:', error);
+    res.status(500).json({ error: 'Failed to change question type' });
   }
 });
 
