@@ -1,9 +1,26 @@
--- SupDawg Database Schema
+-- SupDawg Pro Database Schema
+-- Multi-workspace support for App Directory
+
+-- Workspace installations table
+-- Tracks each workspace that has installed the app
+CREATE TABLE IF NOT EXISTS workspace_installations (
+  id SERIAL PRIMARY KEY,
+  team_id VARCHAR(255) UNIQUE NOT NULL,
+  team_name VARCHAR(255),
+  bot_token TEXT NOT NULL,
+  bot_user_id VARCHAR(255),
+  bot_access_token TEXT,
+  installed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_workspace_installations_team_id ON workspace_installations(team_id);
 
 -- Users table
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
-  slack_user_id VARCHAR(255) UNIQUE NOT NULL,
+  workspace_id INTEGER REFERENCES workspace_installations(id) ON DELETE CASCADE,
+  slack_user_id VARCHAR(255) NOT NULL,
   slack_username VARCHAR(255),
   email VARCHAR(255),
   timezone VARCHAR(100) DEFAULT 'America/New_York',
@@ -11,12 +28,14 @@ CREATE TABLE IF NOT EXISTS users (
   is_active BOOLEAN DEFAULT true,
   is_admin BOOLEAN DEFAULT false,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(workspace_id, slack_user_id)
 );
 
 -- Questions table
 CREATE TABLE IF NOT EXISTS questions (
   id SERIAL PRIMARY KEY,
+  workspace_id INTEGER REFERENCES workspace_installations(id) ON DELETE CASCADE,
   question_text TEXT NOT NULL,
   question_type VARCHAR(50) DEFAULT 'rotating' CHECK (question_type IN ('rating', 'what_went_well', 'what_didnt_go_well', 'rotating')),
   is_core BOOLEAN DEFAULT false,
@@ -53,7 +72,7 @@ CREATE TABLE IF NOT EXISTS responses (
 -- Workspace configuration table
 CREATE TABLE IF NOT EXISTS workspace_config (
   id SERIAL PRIMARY KEY,
-  slack_workspace_id VARCHAR(255) UNIQUE NOT NULL,
+  workspace_id INTEGER UNIQUE REFERENCES workspace_installations(id) ON DELETE CASCADE,
   current_question_index INTEGER DEFAULT 0,
   check_in_day VARCHAR(20) DEFAULT 'thursday',
   check_in_time VARCHAR(10) DEFAULT '14:00',
@@ -63,8 +82,10 @@ CREATE TABLE IF NOT EXISTS workspace_config (
 );
 
 -- Create indexes for better query performance
+CREATE INDEX IF NOT EXISTS idx_users_workspace_id ON users(workspace_id);
 CREATE INDEX IF NOT EXISTS idx_users_slack_user_id ON users(slack_user_id);
 CREATE INDEX IF NOT EXISTS idx_users_manager_id ON users(manager_id);
+CREATE INDEX IF NOT EXISTS idx_questions_workspace_id ON questions(workspace_id);
 CREATE INDEX IF NOT EXISTS idx_check_ins_user_id ON check_ins(user_id);
 CREATE INDEX IF NOT EXISTS idx_check_ins_week_start_date ON check_ins(week_start_date);
 CREATE INDEX IF NOT EXISTS idx_responses_check_in_id ON responses(check_in_id);
