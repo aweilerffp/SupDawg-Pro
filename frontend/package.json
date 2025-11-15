@@ -1,7 +1,7 @@
 {
-  "name": "supdawg-frontend",
+  "name": "supdawg-pro-frontend",
   "version": "1.0.0",
-  "description": "SupDawg Frontend - Team Pulse Check-in Dashboard",
+  "description": "SupDawg Pro Frontend - Team Pulse Check-in Dashboard (App Directory Version)",
   "type": "module",
   "scripts": {
     "dev": "vite",

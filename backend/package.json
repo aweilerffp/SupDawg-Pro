@@ -1,7 +1,7 @@
 {
-  "name": "supdawg-backend",
+  "name": "supdawg-pro-backend",
   "version": "1.0.0",
-  "description": "SupDawg Slack Team Pulse Check-in Bot - Backend",
+  "description": "SupDawg Pro Slack Team Pulse Check-in Bot - Backend (App Directory Version)",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",

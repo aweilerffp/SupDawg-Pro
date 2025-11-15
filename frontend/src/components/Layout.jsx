@@ -30,7 +30,7 @@ export default function Layout({ children }) {
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="flex items-center px-6 py-5 border-b">
-            <div className="text-2xl font-bold text-primary-600">🐕 SupDawg</div>
+            <div className="text-2xl font-bold text-primary-600">🐕 SupDawg Pro</div>
           </div>
 
           {/* Navigation */}

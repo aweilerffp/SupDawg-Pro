@@ -1,8 +1,8 @@
-# SupDawg 🐕
+# SupDawg Pro 🐕
 
-**Team Pulse Check-in Bot for Slack**
+**Team Pulse Check-in Bot for Slack - App Directory Version**
 
-SupDawg is a Slack bot that conducts weekly pulse check-ins with team members via direct messages, collects structured feedback, and aggregates responses into a management dashboard.
+SupDawg Pro is a publicly available Slack app that conducts weekly pulse check-ins with team members via direct messages, collects structured feedback, and aggregates responses into a management dashboard. This is the multi-workspace version designed for distribution via the Slack App Directory.
 
 ## Features
 
@@ -47,8 +47,8 @@ SupDawg is a Slack bot that conducts weekly pulse check-ins with team members vi
 ### 1. Clone the Repository
 
 \`\`\`bash
-git clone <repository-url>
-cd SupDawg
+git clone https://github.com/aweilerffp/SupDawg-Pro.git
+cd SupDawg-Pro
 \`\`\`
 
 ### 2. Backend Setup
@@ -64,12 +64,11 @@ cp .env.example .env
 Edit \`.env\` with your configuration:
 
 \`\`\`env
-DATABASE_URL=postgresql://user:password@localhost:5432/supdawg
+DATABASE_URL=postgresql://user:password@localhost:5432/supdawg_pro
 SLACK_BOT_TOKEN=xoxb-your-bot-token
 SLACK_SIGNING_SECRET=your-signing-secret
 SLACK_CLIENT_ID=your-client-id
 SLACK_CLIENT_SECRET=your-client-secret
-SLACK_APP_TOKEN=xapp-your-app-token
 SESSION_SECRET=your-random-session-secret
 PORT=3000
 NODE_ENV=production
@@ -82,9 +81,9 @@ BASE_URL=https://yourdomain.com
 \`\`\`bash
 # Create PostgreSQL database
 sudo -u postgres psql
-CREATE DATABASE supdawg;
-CREATE USER supdawg_user WITH PASSWORD 'your_password';
-GRANT ALL PRIVILEGES ON DATABASE supdawg TO supdawg_user;
+CREATE DATABASE supdawg_pro;
+CREATE USER supdawg_pro_user WITH PASSWORD 'your_password';
+GRANT ALL PRIVILEGES ON DATABASE supdawg_pro TO supdawg_pro_user;
 \q
 
 # Run migrations
@@ -102,31 +101,44 @@ npm install
 
 1. Go to [https://api.slack.com/apps](https://api.slack.com/apps)
 2. Click "Create New App" → "From scratch"
-3. Name it "SupDawg" and select your workspace
+3. Name it "SupDawg Pro" and select your workspace
 
 #### OAuth & Permissions
 
 Add these Bot Token Scopes:
 - \`chat:write\` - Send messages
 - \`users:read\` - Get user info/timezones
+- \`users:read.email\` - Get user emails
 - \`im:write\` - Open DM channels
 - \`im:history\` - Read DM responses
 
-#### Socket Mode
-
-1. Enable Socket Mode
-2. Generate an App-Level Token with \`connections:write\` scope
-3. Copy the token (starts with \`xapp-\`) to \`.env\` as \`SLACK_APP_TOKEN\`
-
 #### Event Subscriptions
 
-Subscribe to these bot events:
-- \`message.im\` - Receive DM messages
+**Important:** SupDawg Pro uses HTTP Request URLs (not Socket Mode) for App Directory compatibility.
 
-#### Install App
+1. Enable Event Subscriptions
+2. Set Request URL to: \`https://yourdomain.com/slack/events\`
+3. Subscribe to these bot events:
+   - \`message.im\` - Receive DM messages
 
-1. Install the app to your workspace
-2. Copy the Bot Token (starts with \`xoxb-\`) to \`.env\` as \`SLACK_BOT_TOKEN\`
+#### Interactivity & Shortcuts
+
+1. Enable Interactivity
+2. Set Request URL to: \`https://yourdomain.com/slack/interactions\`
+
+#### OAuth & Install
+
+1. Add Redirect URL: \`https://yourdomain.com/api/auth/slack/callback\`
+2. Install the app to your workspace
+3. Copy the Bot Token (starts with \`xoxb-\`) to \`.env\` as \`SLACK_BOT_TOKEN\`
+4. Copy Signing Secret to \`.env\` as \`SLACK_SIGNING_SECRET\`
+
+#### Public Distribution
+
+To enable public distribution for the Slack App Directory:
+1. Go to "Manage Distribution"
+2. Activate Public Distribution
+3. Complete all required App Directory information
 
 ## Development
 
@@ -274,9 +286,10 @@ pm2 startup
 ### Bot not sending messages
 
 1. Check Slack app is installed to workspace
-2. Verify \`SLACK_BOT_TOKEN\` and \`SLACK_APP_TOKEN\` in \`.env\`
-3. Ensure Socket Mode is enabled
-4. Check PM2 logs: \`pm2 logs supdawg-backend\`
+2. Verify \`SLACK_BOT_TOKEN\` and \`SLACK_SIGNING_SECRET\` in \`.env\`
+3. Ensure Event Subscriptions and Interactivity URLs are configured correctly
+4. Verify your server is publicly accessible via HTTPS
+5. Check PM2 logs: \`pm2 logs supdawg-pro-backend\`
 
 ### Check-ins not scheduled correctly
 
